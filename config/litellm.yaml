@@ -1,0 +1,87 @@
+# ============================================================
+# LiteLLM Configuration (Latest 2026 Production Standard)
+#
+# 100% Dynamic Architecture:
+# - Zero hardcoded models or secrets in configuration
+# - Deployments, multi-key pools, RPM, and TPM persisted in PostgreSQL
+# - Managed in real-time with zero container restarts
+# ============================================================
+
+model_list: []
+
+
+# ============================================================
+# ROUTER SETTINGS (High-Concurrency & Multi-Key Balancing)
+# ============================================================
+
+router_settings:
+
+  # Route dynamically to the deployment handling the fewest active requests.
+  routing_strategy: least-busy
+
+  # Automatic retries on rate limits (429) and temporary provider drops (5xx)
+  num_retries: 3
+  retry_after: 1
+
+  # Mark failing deployment unhealthy after repeated failures
+  allowed_fails: 2
+
+  # Cooldown period (seconds) before retrying a failing deployment
+  cooldown_time: 60
+
+  # Pre-call validation (rate limits, key health, and parameter checks before dispatch)
+  enable_pre_call_checks: true
+
+
+# ============================================================
+# LITELLM SETTINGS (Operational Stability, Security & Hardening)
+# ============================================================
+
+litellm_settings:
+
+  # Logging & Telemetry
+  set_verbose: false
+  telemetry: false
+
+  # Privacy & PII Protection: do not log prompt content or keys into logs/database
+  store_prompts_in_spend_logs: false
+  turn_off_message_logging: true
+  redact_user_api_key_info: true
+
+  # Dynamic Cross-Provider Parameter Translation:
+  # Automatically drop unsupported vendor params and normalize cross-model flags
+  drop_params: true
+  modify_params: true
+
+  # Timeouts (prevents hanging sockets on long reasoning / streaming calls)
+  request_timeout: 120
+  stream_timeout: 60
+
+
+# ============================================================
+# GENERAL & DATABASE SETTINGS (High-Resilience Persistence)
+# ============================================================
+
+general_settings:
+
+  # Single master key for all gateway traffic (Cline, Cursor, OpenCode, curl)
+  master_key: os.environ/LITELLM_MASTER_KEY
+
+  # Admin Web UI mode (http://localhost:4000/ui)
+  ui_access_mode: admin_only
+
+  # Persistent PostgreSQL connection
+  database_url: os.environ/DATABASE_URL
+
+  # Dynamic model persistence in PostgreSQL (LiteLLM_ProxyModelTable)
+  store_model_in_db: true
+
+  # High-Availability Resilience: keep serving in-memory cached routes if DB has temporary hiccups
+  allow_requests_on_db_unavailable: true
+
+  # Asynchronous spend batching: prevents database write bottlenecks under concurrent load
+  proxy_batch_write_at: 60
+
+  # Connection pool tuning
+  database_connection_pool_limit: 10
+  database_connection_timeout: 30
